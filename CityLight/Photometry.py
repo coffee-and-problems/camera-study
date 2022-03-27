@@ -5,6 +5,8 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import math
+from numpy.random import default_rng
+rng = default_rng(seed = 22)
 from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photometry
 
 class Photometry(object):
@@ -20,7 +22,30 @@ class Photometry(object):
         magnitudes = Enumerable()
         for standatr in standarts:
             magnitudes.append(Photometry.__get_magnitude_in_flux_unit__(data, standatr))
-        return magnitudes.avg(lambda x: x)
+        return magnitudes.avg()
+
+    def get_arcsec_in_pix(data, fov):
+        return data.shape[0]/fov[0]
+
+    def get_random_pixels(data, number_of_pixels):
+        pixls = []
+        for i in range(number_of_pixels):
+            coords = (rng.integers(0, data.shape[0]-1), rng.integers(0, data.shape[1]-1))
+            pixls.append(data[coords[0], coords[1]])
+        return pixls
+
+    def get_avg_background_flux(data):
+        background = Photometry.get_random_pixels(data, 200)
+        data = Enumerable(data)
+        median = data.select_many().median()
+        background = Enumerable(background)
+        return background.where(lambda x: x < median).avg()
+
+    def get_avg_background_magnitude(data, fov, standarts):
+        magnitude_in_flux_unit = Photometry.get_magnitude_in_flux_unit(data, standarts)
+        arcsec_in_pix = Photometry.get_arcsec_in_pix(data, fov)
+        background = Photometry.get_avg_background_flux(data)
+        return magnitude_in_flux_unit - 2.5 * math.log(background/arcsec_in_pix, 10)
 
 class Standart(object):
     def __init__(self, coords, magnitude, aperture_radius, inner_annulus_radius, outer_annulus_radius):
