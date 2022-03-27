@@ -6,24 +6,11 @@ import os
 import matplotlib.pyplot as plt
 from Sort import *
 from Photometry import *
+from lib import alipylocal as alipy
 from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photometry
 
-fits_dir = 'data/test_big'
 
 #Sort().sort_by_camera_and_filter(fits_dir)
-
-#circle1_big = plt.Circle((208.5,220), 5.7, color='r', fill=False)
-#circle2_big = plt.Circle((275.5,175), 4.9, color='r', fill=False)
-#circle3_big = plt.Circle((282,221), 3.7, color='r', fill=False)
-#circle4_big = plt.Circle((279,276), 3.7, color='r', fill=False)
-
-#circle1_small = plt.Circle((223,142), 3.2, color='r', fill=False)
-#circle2_small = plt.Circle((182,185.5), 2.8, color='r', fill=False)
-#circle3_small = plt.Circle((170,153), 2.4, color='r', fill=False)
-#circle4_small = plt.Circle((111,103), 2.2, color='r', fill=False)
-
-#aperture1_big = CircularAperture((208.5,220), r=5.7); annulus1_big = CircularAnnulus((208.5,220), r_in=6., r_out=9.)
-
 
 standarts = {
     'MicroLine_ML4710_528_513' : {
@@ -56,38 +43,86 @@ standarts = {
         }
     }
 
-for subdir, dirs, files in os.walk(fits_dir):
-    for f in files:
-        with fits.open(os.path.join(subdir, f)) as hdul:
-            flat = hdul[0].data - 1000
-            #plt.figure()
-            #ax = plt.gca()
-            #ax.cla()
-            #ax.imshow(flat, cmap='gray', vmin=2000, vmax=20000)
-            #plt.title(f)
-            ##ax.add_patch(circle1_big)
-            ##ax.add_patch(circle2_big)
-            ##ax.add_patch(circle3_big)
-            ##ax.add_patch(circle4_big)
-            #plt.show()
+def make_cat(path):
+        cat = alipy.imgcat.ImgCat(path)
+        cat.makecat(rerun=False, keepcat=False, verbose=True)
+        cat.makestarlist(verbose=False)
+        return cat
 
-            print(Photometry.get_avg_background_magnitude(flat, (6,6), standarts['MicroLine_ML4710_528_513']['I']))
-            
+def find_transform(fits_path, ref_cat):
+    cat = make_cat(fits_path)
+    idn = alipy.ident.Identification(cat, ref_cat)
+    idn.findtrans(verbose=False)
+    if idn.ok:
+        return idn.trans
+    return None
 
 
-#fits_dir = 'data/test_small'
+fits_dir = 'data/MicroLine_ML4710_528_513/I'
+ref = make_cat('data/test_big/s50716_i_0.fits')
+with open(f'CityLight.csv', 'a') as output:
+    for subdir, dirs, files in os.walk(fits_dir):
+        for f in files:
+            with fits.open(os.path.join(subdir, f)) as hdul:
+                flat = hdul[0].data - 1000
+                transform = find_transform(os.path.join(subdir, f), ref)
+                if transform is None:
+                    continue
+                aligned_standarts = []
+                for standart in standarts['MicroLine_ML4710_528_513']['I']:
+                    aligned_standarts.append(Standart( transform.apply(standart.x, standart.y), standart.magnitude, standart.aperture_radius, standart.inner_annulus_radius, standart.outer_annulus_radius) )
+                avg_background = Photometry.get_avg_background_magnitude(flat, (6,6), aligned_standarts)
+                date = hdul[0].header['DATE']
+                output.write(f'{f},{date},{avg_background}\n')
 
-#for subdir, dirs, files in os.walk(fits_dir):
-#    for f in files:
-#        with fits.open(os.path.join(subdir, f)) as hdul:
-#            matrix_size = (hdul[0].data.shape[0], hdul[0].data.shape[1])
-#            flat = hdul[0].data
-#            plt.figure()
-#            ax = plt.gca()
-#            ax.cla()
-#            ax.imshow(flat, cmap='gray', vmin=100, vmax=2000)
-#            ax.add_patch(circle1_small)
-#            ax.add_patch(circle2_small)
-#            ax.add_patch(circle3_small)
-#            ax.add_patch(circle4_small)
-#            plt.show()
+
+fits_dir = 'data/MicroLine_ML4710_528_513/R'
+ref = make_cat('data/test_big/s50716_r_12.fits')
+with open(f'CityLight.csv', 'a') as output:
+    for subdir, dirs, files in os.walk(fits_dir):
+        for f in files:
+            with fits.open(os.path.join(subdir, f)) as hdul:
+                flat = hdul[0].data - 1000
+                transform = find_transform(os.path.join(subdir, f), ref)
+                if transform is None:
+                    continue
+                aligned_standarts = []
+                for standart in standarts['MicroLine_ML4710_528_513']['R']:
+                    aligned_standarts.append(Standart( transform.apply(standart.x, standart.y), standart.magnitude, standart.aperture_radius, standart.inner_annulus_radius, standart.outer_annulus_radius) )
+                avg_background = Photometry.get_avg_background_magnitude(flat, (6,6), aligned_standarts)
+                date = hdul[0].header['DATE']
+                output.write(f'{f},{date},{avg_background}\n')
+
+fits_dir = 'data/SBIG_ST-7_382_255/I'
+ref = make_cat('data/test_small/s50716_i_3.fits')
+with open(f'CityLight.csv', 'a') as output:
+    for subdir, dirs, files in os.walk(fits_dir):
+        for f in files:
+            with fits.open(os.path.join(subdir, f)) as hdul:
+                flat = hdul[0].data - 1000
+                transform = find_transform(os.path.join(subdir, f), ref)
+                if transform is None:
+                    continue
+                aligned_standarts = []
+                for standart in standarts['MicroLine_ML4710_528_513']['I']:
+                    aligned_standarts.append(Standart( transform.apply(standart.x, standart.y), standart.magnitude, standart.aperture_radius, standart.inner_annulus_radius, standart.outer_annulus_radius) )
+                avg_background = Photometry.get_avg_background_magnitude(flat, (6,6), aligned_standarts)
+                date = hdul[0].header['DATE']
+                output.write(f'{f},{date},{avg_background}\n')
+
+fits_dir = 'data/SBIG_ST-7_382_255/R'
+ref = make_cat('data/test_small/s50716_r_3.fits')
+with open(f'CityLight.csv', 'a') as output:
+    for subdir, dirs, files in os.walk(fits_dir):
+        for f in files:
+            with fits.open(os.path.join(subdir, f)) as hdul:
+                flat = hdul[0].data - 1000
+                transform = find_transform(os.path.join(subdir, f), ref)
+                if transform is None:
+                    continue
+                aligned_standarts = []
+                for standart in standarts['MicroLine_ML4710_528_513']['R']:
+                    aligned_standarts.append(Standart( transform.apply(standart.x, standart.y), standart.magnitude, standart.aperture_radius, standart.inner_annulus_radius, standart.outer_annulus_radius) )
+                avg_background = Photometry.get_avg_background_magnitude(flat, (6,6), aligned_standarts)
+                date = hdul[0].header['DATE']
+                output.write(f'{f},{date},{avg_background}\n')

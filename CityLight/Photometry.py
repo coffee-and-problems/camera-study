@@ -47,8 +47,14 @@ class Photometry(object):
         background = Photometry.get_avg_background_flux(data)
         return magnitude_in_flux_unit - 2.5 * math.log(background/arcsec_in_pix, 10)
 
+
 class Standart(object):
     def __init__(self, coords, magnitude, aperture_radius, inner_annulus_radius, outer_annulus_radius):
+        self.x = coords[0]
+        self.y = coords[1]
+        self.magnitude = magnitude
+        self.aperture_radius = aperture_radius
+        self.inner_annulus_radius = inner_annulus_radius
+        self.outer_annulus_radius =outer_annulus_radius
         self.aperture = CircularAperture(coords, r=aperture_radius)
         self.annulus = CircularAnnulus(coords, r_in=inner_annulus_radius, r_out=outer_annulus_radius)
-        self.magnitude = magnitude
