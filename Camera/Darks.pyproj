@@ -5,7 +5,7 @@
     <ProjectGuid>a17a9e91-f57e-46e1-ba15-e488f0619e4e</ProjectGuid>
     <ProjectHome>
     </ProjectHome>
-    <StartupFile>Darks_preproc.py</StartupFile>
+    <StartupFile>Dataproporation.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -23,7 +23,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Darks_preproc.py" />
+    <Compile Include="Dataproporation.py" />
     <Compile Include="Plot.py" />
   </ItemGroup>
   <ItemGroup>

@@ -21,4 +21,6 @@ _ReSharper*/
 *.csv
 .vs/
 */__pycache__/*
+*/alipy_cats/*
+*/lib/*
 *.png

@@ -1,128 +1,93 @@
-# This module allows us to use LINQ syntaxis to operate the collections
-from py_linq import Enumerable
-from astropy.io import fits
-import numpy as np
-import os
+﻿from statsmodels.graphics.tsaplots import plot_pacf
+from statsmodels.graphics.tsaplots import plot_acf
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.stattools import adfuller
 import matplotlib.pyplot as plt
-from Sort import *
-from Photometry import *
-from lib import alipylocal as alipy
-from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photometry
+from tqdm import tqdm_notebook
+import numpy as np
+import pandas as pd
+from itertools import product
+import warnings
+warnings.filterwarnings('ignore')
 
+data = pd.read_csv('CityLight.csv')
+data['date']= pd.to_datetime(data['date'])
+data = data.sort_values('date')
 
-#Sort().sort_by_camera_and_filter(fits_dir)
+#plt.figure()
+#plt.scatter(data['date'], data['background_magnitude'], s=3)
+#plt.title('Фон неба (в звездных величинах с квадратной секунды) в зависимости от времени')
+#plt.ylabel('m/"')
+#plt.xlabel('Год')
+#plt.xticks(rotation=90)
+#plt.grid(True)
+#plt.show()
 
-standarts = {
-    'MicroLine_ML4710_528_513' : {
-        'I' : [
-        Standart((208.5,220), 10.92, 5.7, 6., 9.),
-        Standart((275.5,175), 11.79, 4.9, 5.2, 8.2),
-        Standart((282,221), 12.85, 3.7, 4., 7.),
-        Standart((279,276), 12.97, 3.7, 4., 7.)
-        ],
-        'R' : [
-        Standart((208.5,220), 11.12, 5.7, 6., 9.),
-        Standart((275.5,175), 12.06, 4.9, 5.2, 8.2),
-        Standart((282,221), 13.18, 3.7, 4., 7.),
-        Standart((279,276), 13.26, 3.7, 4., 7.)
-        ]
-        },
-    'SBIG_ST-7_382_255' : {
-        'I' : [
-        Standart((223,142), 10.92, 3.2, 3.5, 5.5),
-        Standart((182,185.5), 11.79, 2.8, 3.0, 5.0),
-        Standart((170,153), 12.85, 2.4, 2.6, 5.6),
-        Standart((111,103), 12.97, 2.2, 2.4, 5.4)
-        ],
-        'R' : [
-        Standart((223,142), 11.12, 3.2, 3.5, 5.5),
-        Standart((182,185.5), 12.06, 2.8, 3.0, 5.0),
-        Standart((170,153), 13.18, 2.4, 2.6, 5.6),
-        Standart((111,103), 13.26, 2.2, 2.4, 5.4)
-        ]
-        }
-    }
+ad_fuller_result = adfuller(data['background_magnitude'])
+print(f'ADF Statistic: {ad_fuller_result[0]}')
+print(f'p-value: {ad_fuller_result[1]}') #1e-7, будто ряд стационарный...
 
-def make_cat(path):
-        cat = alipy.imgcat.ImgCat(path)
-        cat.makecat(rerun=False, keepcat=False, verbose=True)
-        cat.makestarlist(verbose=False)
-        return cat
+#data['background_magnitude'] = np.log(data['background_magnitude'])
+#data['background_magnitude'] = data['background_magnitude'].diff()
+#data = data.drop(data.index[0])
+#data['background_magnitude'] = data['background_magnitude'].diff(12)
+#data = data.drop([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], axis=0).reset_index(drop=True)
+#plt.figure()
+#plt.plot(data['background_magnitude'])
+#plt.show()
 
-def find_transform(fits_path, ref_cat):
-    cat = make_cat(fits_path)
-    idn = alipy.ident.Identification(cat, ref_cat)
-    idn.findtrans(verbose=False)
-    if idn.ok:
-        return idn.trans
-    return None
+def optimize_SARIMA(parameters_list, d, D, s, exog):
+    """
+        Return dataframe with parameters, corresponding AIC and SSE
+        
+        parameters_list - list with (p, q, P, Q) tuples
+        d - integration order
+        D - seasonal integration order
+        s - length of season
+        exog - the exogenous variable
+    """
+    
+    results = []
+    
+    for param in tqdm_notebook(parameters_list):
+        try: 
+            model = SARIMAX(exog, order=(param[0], d, param[1]), seasonal_order=(param[2], D, param[3], s)).fit(disp=-1)
+        except:
+            continue
+            
+        aic = model.aic
+        results.append([param, aic])
+        
+    result_df = pd.DataFrame(results)
+    result_df.columns = ['(p,q)x(P,Q)', 'AIC']
+    #Чем AIC меньше, тем лучше
+    result_df = result_df.sort_values(by='AIC', ascending=True).reset_index(drop=True)
+    
+    return result_df
 
+p = range(0, 4, 1)
+d = 1
+q = range(0, 4, 1)
+P = range(0, 4, 1)
+D = 1
+Q = range(0, 4, 1)
+s = 12
+#parameters = product(p, q, P, Q)
+#parameters_list = list(parameters) #256 вариантов параметров
+#result_df = optimize_SARIMA(parameters_list, d, D, s, data['background_magnitude'])
+#print(result_df)
 
-fits_dir = 'data/MicroLine_ML4710_528_513/I'
-ref = make_cat('data/test_big/s50716_i_0.fits')
-with open(f'CityLight.csv', 'a') as output:
-    for subdir, dirs, files in os.walk(fits_dir):
-        for f in files:
-            with fits.open(os.path.join(subdir, f)) as hdul:
-                flat = hdul[0].data - 1000
-                transform = find_transform(os.path.join(subdir, f), ref)
-                if transform is None:
-                    continue
-                aligned_standarts = []
-                for standart in standarts['MicroLine_ML4710_528_513']['I']:
-                    aligned_standarts.append(Standart( transform.apply(standart.x, standart.y), standart.magnitude, standart.aperture_radius, standart.inner_annulus_radius, standart.outer_annulus_radius) )
-                avg_background = Photometry.get_avg_background_magnitude(flat, (6,6), aligned_standarts)
-                date = hdul[0].header['DATE']
-                output.write(f'{f},{date},{avg_background}\n')
+best_model = SARIMAX(data['background_magnitude'], order=(2, d, 3), seasonal_order=(0, D, 2, s)).fit(dis=-1)
+print(best_model.summary())
+best_model.plot_diagnostics()
 
-
-fits_dir = 'data/MicroLine_ML4710_528_513/R'
-ref = make_cat('data/test_big/s50716_r_12.fits')
-with open(f'CityLight.csv', 'a') as output:
-    for subdir, dirs, files in os.walk(fits_dir):
-        for f in files:
-            with fits.open(os.path.join(subdir, f)) as hdul:
-                flat = hdul[0].data - 1000
-                transform = find_transform(os.path.join(subdir, f), ref)
-                if transform is None:
-                    continue
-                aligned_standarts = []
-                for standart in standarts['MicroLine_ML4710_528_513']['R']:
-                    aligned_standarts.append(Standart( transform.apply(standart.x, standart.y), standart.magnitude, standart.aperture_radius, standart.inner_annulus_radius, standart.outer_annulus_radius) )
-                avg_background = Photometry.get_avg_background_magnitude(flat, (6,6), aligned_standarts)
-                date = hdul[0].header['DATE']
-                output.write(f'{f},{date},{avg_background}\n')
-
-fits_dir = 'data/SBIG_ST-7_382_255/I'
-ref = make_cat('data/test_small/s50716_i_3.fits')
-with open(f'CityLight.csv', 'a') as output:
-    for subdir, dirs, files in os.walk(fits_dir):
-        for f in files:
-            with fits.open(os.path.join(subdir, f)) as hdul:
-                flat = hdul[0].data - 1000
-                transform = find_transform(os.path.join(subdir, f), ref)
-                if transform is None:
-                    continue
-                aligned_standarts = []
-                for standart in standarts['MicroLine_ML4710_528_513']['I']:
-                    aligned_standarts.append(Standart( transform.apply(standart.x, standart.y), standart.magnitude, standart.aperture_radius, standart.inner_annulus_radius, standart.outer_annulus_radius) )
-                avg_background = Photometry.get_avg_background_magnitude(flat, (6,6), aligned_standarts)
-                date = hdul[0].header['DATE']
-                output.write(f'{f},{date},{avg_background}\n')
-
-fits_dir = 'data/SBIG_ST-7_382_255/R'
-ref = make_cat('data/test_small/s50716_r_3.fits')
-with open(f'CityLight.csv', 'a') as output:
-    for subdir, dirs, files in os.walk(fits_dir):
-        for f in files:
-            with fits.open(os.path.join(subdir, f)) as hdul:
-                flat = hdul[0].data - 1000
-                transform = find_transform(os.path.join(subdir, f), ref)
-                if transform is None:
-                    continue
-                aligned_standarts = []
-                for standart in standarts['MicroLine_ML4710_528_513']['R']:
-                    aligned_standarts.append(Standart( transform.apply(standart.x, standart.y), standart.magnitude, standart.aperture_radius, standart.inner_annulus_radius, standart.outer_annulus_radius) )
-                avg_background = Photometry.get_avg_background_magnitude(flat, (6,6), aligned_standarts)
-                date = hdul[0].header['DATE']
-                output.write(f'{f},{date},{avg_background}\n')
+data['arima_model'] = best_model.fittedvalues
+#forecast = best_model.predict(start=data.shape[0], end=data.shape[0]+20)
+#forecast = data['arima_model'].append(forecast)
+plt.figure()
+plt.scatter(data['date'], data['arima_model'], color='r', s=3, label='model')
+#plt.axvspan(data.index[-1], forecast.index[-1], alpha=0.5, color='lightgrey')
+plt.scatter(data['date'], data['background_magnitude'], s=3, label='actual')
+plt.legend()
+plt.show()

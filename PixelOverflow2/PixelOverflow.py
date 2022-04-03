@@ -31,12 +31,14 @@ def take_only_non_negative(x, y):
 
 def plot_scatter_and_fit(x, y):
     (x_non_negative, y_non_negative) = take_only_non_negative(x, y)
-    m, b = np.polyfit(x_non_negative, y_non_negative, 1)
+    a, residuals, _, _, _ = np.polyfit(x_non_negative, y_non_negative, 4, full=True)
+    m4, m3, m2, m1, b = a
+
     plt.title(f'Зависимость пикселя с координатами {c} от экспозиции')
     plt.scatter(x, y, s=3)
-    plt.plot(x, m*x + b, 'm-', linewidth=0.8, label=f'{m:.2f} x + {b:.2f}')
+    plt.plot(x, m4*x*x*x*x + m3*x*x*x + m2*x*x + m1*x + b, 'm-', linewidth=0.8, label=f'{m1:.2f} x + {b:.2f}, err:{residuals[0]:.4f}')
     plt.legend()
-    plt.savefig(f'Пиксель {c}_fit.png')
+    plt.savefig(f'Пиксель4 {c}_fit.png')
     plt.clf()
 
 
@@ -48,12 +50,12 @@ for subdir, dirs, files in os.walk(fits_dir):
         with fits.open(os.path.join(subdir, f)) as hdul:
             matrix_size = (hdul[0].data.shape[0], hdul[0].data.shape[1])
             flat = Data(hdul[0].header['EXPTIME'], hdul[0].data)
-            plt.title(f"Экспозиция: {flat.exposure}с")
-            plt.imshow(flat.intensity, cmap='gray', vmin=-32000, vmax=32000)
-            plt.colorbar()
-            idontlikepythonbecauseofthis = f.split('.')[0]
-            plt.savefig(f'{idontlikepythonbecauseofthis}.png')
-            plt.clf()
+            #plt.title(f"Экспозиция: {flat.exposure}с")
+            #plt.imshow(flat.intensity, cmap='gray', vmin=-32000, vmax=32000)
+            #plt.colorbar()
+            #idontlikepythonbecauseofthis = f.split('.')[0]
+            #plt.savefig(f'{idontlikepythonbecauseofthis}.png')
+            #plt.clf()
             exposure_and_intensity = []
             for c in coords:
                 exposure_and_intensity.append(flat.get_exposure_and_intensity(c))
@@ -65,5 +67,5 @@ exposure_and_intensities = np.array(exposure_and_intensities)
 for (j, c) in zip(range(16), coords):
     exposure = exposure_and_intensities[:,j,0]
     intensities = exposure_and_intensities[:,j,1]
-    plot_scatter(exposure, intensities)
+    #plot_scatter(exposure, intensities)
     plot_scatter_and_fit(exposure, intensities)
