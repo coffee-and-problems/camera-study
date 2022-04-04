@@ -25,6 +25,7 @@
     <Compile Include="CityLight.py" />
     <Compile Include="DataPreporation.py" />
     <Compile Include="Photometry.py" />
+    <Compile Include="Sarima.py" />
     <Compile Include="Sort.py" />
   </ItemGroup>
   <ItemGroup>
