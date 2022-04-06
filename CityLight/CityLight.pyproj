@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>44679d98-c635-4c33-a5fe-48b7f9dbfe70</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>CityLight.py</StartupFile>
+    <StartupFile>Sarima.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -22,6 +22,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="1.py" />
     <Compile Include="CityLight.py" />
     <Compile Include="DataPreporation.py" />
     <Compile Include="Photometry.py" />
