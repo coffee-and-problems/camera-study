@@ -4,8 +4,8 @@ import os
 
 fits_dir = 'darks'
 
-for i in range(1,6):
-    for j in range(1,6):
+for i in range(1,5):
+    for j in range(1,5):
         with open(f'T_E_part{i}{j}.csv', 'a') as f:
             for subdir, dirs, files in os.walk(fits_dir):
                 for dark in files:

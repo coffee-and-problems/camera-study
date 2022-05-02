@@ -9,21 +9,56 @@ import numpy as np
 import pandas as pd
 from itertools import product
 import warnings
+import datetime
+from py_linq import Enumerable
 warnings.filterwarnings('ignore')
+
+def get_min(data):
+    data = Enumerable(data)
+    return data.order_by_descending(lambda x: x[1])[0]
 
 data = pd.read_csv('CityLight.csv')
 data[['date_only', 'time']] = data['date'].str.split(' ', 1, expand=True)
 data = data.loc[(data['time'] >= '21:00:00') | (data['time'] <= '02:00:00')]
-data['date'] = pd.to_datetime(data['date'])
+#data['date'] = pd.to_datetime(data['date'])
 data = data.sort_values('date')
 
+start_date = datetime.datetime.strptime(data.iloc[0]['date'], "%Y-%m-%d %H:%M:%S")
+i=0
+
+temp = []
+x = []
+y = []
+
+while True:
+    if i == len(data):
+        if len(temp) > 0:
+            minimum = get_min(temp)
+            x.append(minimum[0])
+            y.append(minimum[1])
+        break
+    end_date = start_date + datetime.timedelta(days=7)
+    current_date = datetime.datetime.strptime(data.iloc[i]['date'], "%Y-%m-%d %H:%M:%S")
+    if current_date > end_date:
+        if len(temp) > 0:
+            minimum = get_min(temp)
+            x.append(minimum[0])
+            y.append(minimum[1])
+        start_date = current_date
+        temp = []
+    else:
+        temp.append( (current_date, data.iloc[i]['background_magnitude']) )
+    i += 1
+
+
 plt.figure()
-plt.scatter(data['date'], data['background_magnitude'], s=3)
+plt.scatter(x, y, s=4)
 plt.title('Фон неба (в звездных величинах с квадратной секунды) в зависимости от времени')
 plt.ylabel('m/"')
 plt.xlabel('Год')
 plt.xticks(rotation=90)
 plt.grid(True)
+plt.gca().invert_yaxis()
 plt.show()
 
 #ad_fuller_result = adfuller(data['background_magnitude'])
@@ -68,28 +103,30 @@ plt.show()
     
 #    return result_df
 
-#p = range(0, 4, 1)
-#d = 1
-#q = range(0, 4, 1)
-#P = range(0, 4, 1)
-#D = 1
-#Q = range(0, 4, 1)
-#s = 12
+p = range(0, 4, 1)
+d = 1
+q = range(0, 4, 1)
+P = range(0, 4, 1)
+D = 1
+Q = range(0, 4, 1)
+s = 12
 ##parameters = product(p, q, P, Q)
 ##parameters_list = list(parameters) #256 вариантов параметров
 ##result_df = optimize_SARIMA(parameters_list, d, D, s, data['background_magnitude'])
 ##print(result_df)
 
-#best_model = SARIMAX(data['background_magnitude'], order=(2, d, 3), seasonal_order=(0, D, 2, s)).fit(dis=-1)
-#print(best_model.summary())
-#best_model.plot_diagnostics()
+best_model = SARIMAX(y, order=(2, d, 3), seasonal_order=(0, D, 2, s)).fit(dis=-1)
+print(best_model.summary())
+best_model.plot_diagnostics()
 
-#data['arima_model'] = best_model.fittedvalues
-##forecast = best_model.predict(start=data.shape[0], end=data.shape[0]+20)
-##forecast = data['arima_model'].append(forecast)
-#plt.figure()
-#plt.scatter(data['date'], data['arima_model'], color='r', s=3, label='model')
-##plt.axvspan(data.index[-1], forecast.index[-1], alpha=0.5, color='lightgrey')
-#plt.scatter(data['date'], data['background_magnitude'], s=3, label='actual')
-#plt.legend()
-#plt.show()
+arima = best_model.fittedvalues
+#forecast = best_model.predict(start=data.shape[0], end=data.shape[0]+20)
+#forecast = data['arima_model'].append(forecast)
+plt.figure()
+plt.scatter(x, arima, color='r', s=3, label='model')
+#plt.axvspan(data.index[-1], forecast.index[-1], alpha=0.5, color='lightgrey')
+plt.scatter(x, y, s=3, label='actual')
+plt.xticks(rotation=90)
+plt.gca().invert_yaxis()
+plt.legend()
+plt.show()
