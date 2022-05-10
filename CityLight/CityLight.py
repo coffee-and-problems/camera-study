@@ -27,12 +27,12 @@ def get_min(data):
     return data.order_by_descending(lambda x: x[1])[0]
 
 data = pd.read_csv('CityLight.csv')
-data[['date_only', 'time']] = data['date'].str.split(' ', 1, expand=True)
+data[['date_only', 'time']] = data['date'].str.split('T', 1, expand=True)
 data = data.loc[(data['time'] >= '21:00:00') | (data['time'] <= '02:00:00')]
 #data['date'] = pd.to_datetime(data['date'])
 data = data.sort_values('date')
 
-start_date = datetime.datetime.strptime(data.iloc[0]['date'], "%Y-%m-%d %H:%M:%S")
+start_date = datetime.datetime.strptime(data.iloc[0]['date_only'], "%Y-%m-%d")
 i=0
 
 temp = []
@@ -46,7 +46,7 @@ while True:
             y.append(minimum[1])
         break
     end_date = start_date + datetime.timedelta(days=7)
-    current_date = datetime.datetime.strptime(data.iloc[i]['date'], "%Y-%m-%d %H:%M:%S")
+    current_date = datetime.datetime.strptime(data.iloc[i]['date_only'], "%Y-%m-%d")
     if current_date > end_date:
         if len(temp) > 0:
             minimum = get_min(temp)
@@ -59,7 +59,7 @@ while True:
     i += 1
 
 
-decompose_result_mult = seasonal_decompose(y, model="additive", freq=16)
+decompose_result_mult = seasonal_decompose(y, model="additive", freq=9)
 
 #figure = decompose_result_mult.plot()
 #figure.axes[0].invert_yaxis()
@@ -72,8 +72,8 @@ plt.gca().invert_yaxis()
 #axis[2].plot(x, decompose_result_mult.seasonal)#.set_title('Seasonal')
 #axis[3].plot(x, decompose_result_mult.resid)#.set_title('Residuals')
 
-#decompose_result_mult.plot();
-plt.plot(x,decompose_result_mult.trend)
+decompose_result_mult.plot();
+#plt.plot(x,decompose_result_mult.trend)
 plt.show()
 
 

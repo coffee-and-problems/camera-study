@@ -32,8 +32,8 @@ class Photometry(object):
             phot_data = data
         magnitude_in_flux_unit = Photometry.get_magnitude_in_flux_unit(phot_data, standarts)
         background = Photometry.get_avg_background_flux(phot_data)
-        a = background/arcsec_in_pix/arcsec_in_pix
-        return magnitude_in_flux_unit - 2.5 * math.log(a, 10)
+        F = background/arcsec_in_pix/arcsec_in_pix
+        return magnitude_in_flux_unit - 2.5 * math.log(F, 10)
 
 
 class Standart(object):

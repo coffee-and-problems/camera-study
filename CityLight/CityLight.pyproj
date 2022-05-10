@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>44679d98-c635-4c33-a5fe-48b7f9dbfe70</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>stats2.py</StartupFile>
+    <StartupFile>Sarima.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
